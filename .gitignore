@@ -1,0 +1,12 @@
+# Compiled output
+/bin/
+*.class
+
+# Logs
+*.log
+
+# OS / System files
+.directory
+
+# Eclipse-specific
+.metadata/
