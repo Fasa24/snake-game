@@ -15,163 +15,200 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 public class GamePanel extends JPanel {
-	static final int WIDTH = 600;
-	static final int HEIGHT = 600;
-	static final int UNIT_SIZE = 25;
 
-	int snakeX;
-	int snakeY;
+    static final int WIDTH = 600;
+    static final int HEIGHT = 600;
+    static final int UNIT_SIZE = 25;
 
-	char direction;
+    int snakeX, snakeY;
+    char direction;
 
-	LinkedList<Point> snakeBody;
+    LinkedList<Point> snakeBody;
 
-	Point food;
-	Random random;
+    Point food;
+    Random random;
 
-	boolean grow = false;
+    boolean grow = false;
+    boolean running = true;
 
-	public GamePanel() {
+    int score = 0;
+    int foodsEaten = 0;
 
-		snakeX = 250;
-		snakeY = 100;
+    int speed = 10;
+    final int SPEED_INCREASE_INTERVAL = 5;
 
-		direction = 'R';
+    public GamePanel() {
+        snakeX = 250;
+        snakeY = 100;
 
-		snakeBody = new LinkedList<>();
+        direction = 'R';
 
-		snakeBody.add(new Point(250, 100));
-		snakeBody.add(new Point(225, 100));
-		snakeBody.add(new Point(200, 100));
+        snakeBody = new LinkedList<>();
+        snakeBody.add(new Point(250, 100));
+        snakeBody.add(new Point(225, 100));
+        snakeBody.add(new Point(200, 100));
 
-		random = new Random();
-		spawnFood();
+        random = new Random();
+        spawnFood();
 
-		this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
-		this.setBackground(Color.black);
-		this.setFocusable(true);
-		this.setDoubleBuffered(true);
+        this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        this.setBackground(Color.black);
+        this.setFocusable(true);
+        this.setDoubleBuffered(true);
 
-		setFocusTraversalKeysEnabled(false);
-		SwingUtilities.invokeLater(() -> requestFocusInWindow());
+        setFocusTraversalKeysEnabled(false);
+        SwingUtilities.invokeLater(() -> requestFocusInWindow());
 
-		this.addKeyListener(new KeyAdapter() {
-			@Override
-			public void keyPressed(KeyEvent e) {
-				switch (e.getKeyCode()) {
+        this.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (!running) return;
+                switch (e.getKeyCode()) {
+                    case KeyEvent.VK_A:
+                        if (direction != 'R') direction = 'L';
+                        break;
+                    case KeyEvent.VK_D:
+                        if (direction != 'L') direction = 'R';
+                        break;
+                    case KeyEvent.VK_W:
+                        if (direction != 'D') direction = 'U';
+                        break;
+                    case KeyEvent.VK_S:
+                        if (direction != 'U') direction = 'D';
+                        break;
+                }
+            }
+        });
+        startGameLoop();
+    }
 
-				case KeyEvent.VK_A:
-					if (direction != 'R') direction = 'L';
-					break;
+    public void startGameLoop() {
+        new Thread(() -> {
+            while (running) {
+                long startTime = System.currentTimeMillis();
 
-				case KeyEvent.VK_D:
-					if (direction != 'L') direction = 'R';
-					break;
+                move();
+                checkFood();
+                checkCollisions();
+                repaint();
 
-				case KeyEvent.VK_W:
-					if (direction != 'D') direction = 'U';
-					break;
+                long frameTime = 1000 / speed;
+                long elapsed = System.currentTimeMillis() - startTime;
+                long sleepTime = frameTime - elapsed;
 
-				case KeyEvent.VK_S:
-					if (direction != 'U') direction = 'D';
-					break;
-				}
-			}
-		});
-		startGameLoop(); // Implemented
-	}
+                if (sleepTime > 0) {
+                    try {
+                        Thread.sleep(sleepTime);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+    }
 
-	// Implemented: Game loop made to fix stutter issues
-	public void startGameLoop() {
-		new Thread(() -> {
-			final int FPS = 10;
-			final long frameTime = 1000 / FPS;
+    public void spawnFood() {
+        int x = random.nextInt(WIDTH / UNIT_SIZE) * UNIT_SIZE;
+        int y = random.nextInt(HEIGHT / UNIT_SIZE) * UNIT_SIZE;
+        food = new Point(x, y);
+    }
 
-			while (true) {
-				long startTime = System.currentTimeMillis();
+    public void checkFood() {
+        if (snakeBody.getFirst().equals(food)) {
+            grow = true;
+            spawnFood();
 
-				move();
-				checkFood();
-				repaint();
+            score += 10;
+            foodsEaten++;
 
-				long elapsed = System.currentTimeMillis() - startTime;
-				long sleepTime = frameTime - elapsed;
+            if (foodsEaten % SPEED_INCREASE_INTERVAL == 0) { speed++; }
+        }
+    }
 
-				if (sleepTime > 0) {
-					try {
-						Thread.sleep(sleepTime);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-			}
-		}).start();
-	}
+    public void checkCollisions() {
+        Point head = snakeBody.getFirst();
 
-	public void spawnFood() {
-		int x = random.nextInt(WIDTH / UNIT_SIZE) * UNIT_SIZE;
-		int y = random.nextInt(HEIGHT / UNIT_SIZE) * UNIT_SIZE;
-		food = new Point(x, y);
-	}
+        // Implemented: Wall collision
+        if (head.x < 0 || head.x >= WIDTH ||
+            head.y < 0 || head.y >= HEIGHT) {
+            running = false;
+        }
 
-	public void checkFood() {
-		if (snakeBody.getFirst().equals(food)) {
-			grow = true;
-			spawnFood();
-		}
-	}
+        // Implemented: Self collision
+        for (int i = 1; i < snakeBody.size(); i++) {
+            if (head.equals(snakeBody.get(i))) {
+                running = false;
+                break;
+            }
+        }
+    }
 
-	@Override
-	public void paintComponent(Graphics g) {
-		super.paintComponent(g);
+    public void move() {
+        switch (direction) {
+            case 'U': snakeY -= UNIT_SIZE; break;
+            case 'D': snakeY += UNIT_SIZE; break;
+            case 'L': snakeX -= UNIT_SIZE; break;
+            case 'R': snakeX += UNIT_SIZE; break;
+        }
+        snakeBody.addFirst(new Point(snakeX, snakeY));
 
-		// Implemented: Draw food
-		g.setColor(Color.RED);
-		g.fillOval(food.x, food.y, UNIT_SIZE, UNIT_SIZE);
+        if (!grow) { snakeBody.removeLast(); }
+        else { grow = false; }
+    }
 
-		// Implemented: Draw snake
-		for (int i = 0; i < snakeBody.size(); i++) {
+    @Override
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g);
 
-			if (i == 0) {
-				g.setColor(Color.GREEN);
-			} else {
-				g.setColor(Color.BLUE);
-			}
+        if (running) {
 
-			g.fillRoundRect(
-				snakeBody.get(i).x,
-				snakeBody.get(i).y,
-				UNIT_SIZE,
-				UNIT_SIZE,
-				5,
-				5
-			);
-		}
+            // Implemented: Draw food
+            g.setColor(Color.RED);
+            g.fillOval(food.x, food.y, UNIT_SIZE, UNIT_SIZE);
 
-		// Implemented: Recommended for better rendering
-		Toolkit.getDefaultToolkit().sync();
-	}
+            // Implemented: Draw snake
+            for (int i = 0; i < snakeBody.size(); i++) {
+                if (i == 0) g.setColor(Color.GREEN);
+                else g.setColor(Color.BLUE);
 
-	public void move() {
-		switch (direction) {
-		case 'U':
-			snakeY -= UNIT_SIZE;
-			break;
+                g.fillRoundRect(
+                        snakeBody.get(i).x,
+                        snakeBody.get(i).y,
+                        UNIT_SIZE,
+                        UNIT_SIZE,
+                        5,
+                        5
+                );
+            }
 
-		case 'D':
-			snakeY += UNIT_SIZE;
-			break;
+            // Implemented: Draw score (top-right)
+            g.setColor(Color.WHITE);
+            g.drawString("Score: " + score, WIDTH - 100, 20);
 
-		case 'L':
-			snakeX -= UNIT_SIZE;
-			break;
+        } else { drawGameOver(g); }
 
-		case 'R':
-			snakeX += UNIT_SIZE;
-			break;
-		}
+        Toolkit.getDefaultToolkit().sync();
+    }
 
-		snakeBody.addFirst(new Point(snakeX, snakeY));
-		if (!grow) { snakeBody.removeLast(); } else { grow = false; }
-	}
+    public void drawGameOver(Graphics g) {
+        String gameOverText = "GAME OVER";
+        String scoreText = "Final Score: " + score;
+
+        g.setColor(Color.RED);
+        g.setFont(g.getFont().deriveFont(40f));
+
+        var metrics = g.getFontMetrics();
+        int x = (WIDTH - metrics.stringWidth(gameOverText)) / 2;
+        int y = HEIGHT / 2;
+
+        g.drawString(gameOverText, x, y);
+
+        g.setFont(g.getFont().deriveFont(20f));
+        metrics = g.getFontMetrics();
+
+        int scoreX = (WIDTH - metrics.stringWidth(scoreText)) / 2;
+        int scoreY = y + 40;
+
+        g.drawString(scoreText, scoreX, scoreY);
+    }
 }
