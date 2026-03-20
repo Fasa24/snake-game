@@ -3,10 +3,11 @@ package snake_game;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-
+import java.io.InputStream;
 import java.util.LinkedList;
 import java.util.Random;
 
+import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
@@ -31,16 +32,39 @@ public class GamePanel extends JPanel {
 
     int speed = 10;
     final int SPEED_INCREASE_INTERVAL = 5;
+    
+    Font font;
+    Image backgroundImage;
 
     Timer timer;
 
     public GamePanel() {
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
-        this.setBackground(Color.black);
+        //this.setBackground(Color.black);
         this.setFocusable(true);
         this.setDoubleBuffered(true);
+        
+        try {
+            backgroundImage = new ImageIcon(
+                getClass().getResource("/img/background1.jpg")
+            ).getImage();
+        } catch (Exception e) {
+        	System.out.println("Image not found");
+            e.printStackTrace();
+        }
 
         initGame();
+        
+        
+        
+        try {
+            InputStream is = getClass().getResourceAsStream("/fonts/Jersey10-Regular.ttf");
+            font = Font.createFont(Font.TRUETYPE_FONT, is).deriveFont(40f);
+        } catch (Exception e) {
+            e.printStackTrace();
+            font = new Font("Arial", Font.BOLD, 30); // fallback
+            System.out.println("No");
+        }
 
         addKeyListener(new KeyAdapter() {
             @Override
@@ -184,6 +208,7 @@ public class GamePanel extends JPanel {
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
+        g.drawImage(backgroundImage, 0, 0, WIDTH, HEIGHT, null);
 
         if (running) {
 
@@ -193,8 +218,8 @@ public class GamePanel extends JPanel {
 
             // Implemented: Draw snake
             for (int i = 0; i < snakeBody.size(); i++) {
-                if (i == 0) g.setColor(Color.GREEN);
-                else g.setColor(Color.BLUE);
+                if (i == 0) g.setColor(Color.yellow);
+                else g.setColor(Color.MAGENTA);
 
                 g.fillRoundRect(
                         snakeBody.get(i).x,
@@ -208,7 +233,8 @@ public class GamePanel extends JPanel {
 
             // Implemented: Draw score
             g.setColor(Color.WHITE);
-            g.setFont(g.getFont().deriveFont(20f));
+            //g.setFont(g.getFont().deriveFont(20f));
+            g.setFont(font.deriveFont(20f));
             String scoreText = "Score: " + score;
             FontMetrics metrics = g.getFontMetrics();
             int scoreX = WIDTH - metrics.stringWidth(scoreText) - 10;
@@ -218,7 +244,8 @@ public class GamePanel extends JPanel {
             // Implemented: Draw pause text centered
             if (paused) {
                 g.setColor(Color.YELLOW);
-                g.setFont(g.getFont().deriveFont(30f));
+                //g.setFont(g.getFont().deriveFont(30f));
+                g.setFont(font.deriveFont(50f));
 
                 String pausedText = "PAUSED";
                 metrics = g.getFontMetrics();
@@ -236,7 +263,8 @@ public class GamePanel extends JPanel {
 
     public void drawGameOver(Graphics g) {
         g.setColor(Color.RED);
-        g.setFont(g.getFont().deriveFont(40f));
+        //g.setFont(g.getFont().deriveFont(40f));
+        g.setFont(font.deriveFont(50f));
 
         String gameOverText = "GAME OVER";
         FontMetrics metrics = g.getFontMetrics();
